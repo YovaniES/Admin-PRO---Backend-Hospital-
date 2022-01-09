@@ -1,28 +1,39 @@
 const bcrypt = require("bcryptjs");
-const req = require("express/lib/request");
-const res = require("express/lib/response");
 const { json } = require("express/lib/response");
 const { generarJWT } = require("../helpers/jwt");
 
 const Usuario = require("../models/usuario");
 
-/* OBETNER USUARIO ======================================== */
+/* OBETNER USUARIO ======================================== 
+-skip: para saltar la paginacion
+- limit: para mostrar la cantidad de usuarios -> desde+5
+- promise.all -> para ejecutar las 2 promesas de manera simultanea
+*/
 const obtenerUsuarios = async (req, res) => {
-  const usuarios = await Usuario.find({}, "nombre email role google");
+  const desde = Number(req.query.desde) || 0;
+
+
+ const [listaUsuarios , totalUsuarios] =await Promise.all([
+    Usuario.find({}, "nombre email role google img")
+           .skip(desde)
+           .limit(5)
+    ,
+    Usuario.countDocuments()
+  ])
+
+  
   res.json({
     ok: true,
-    usuarios,
-    
+    listaUsuarios,
+
     uid: req.uid,
+    totalUsuarios
   });
 };
-
-
 
 /* CREAR USUARIO ======================================== */
 const crearUsuarios = async (req, res) => {
   const { email, password } = req.body;
- 
 
   try {
     const existeEmail = await Usuario.findOne({ email });
@@ -30,7 +41,7 @@ const crearUsuarios = async (req, res) => {
     if (existeEmail) {
       return res.status(400).json({
         ok: false,
-        msg: "El correo ya existe",
+        msg: "El correo ya está registrado en la BD",
       });
     }
     const usuario = new Usuario(req.body);
@@ -42,30 +53,28 @@ const crearUsuarios = async (req, res) => {
     //Guardar usuario
     await usuario.save();
 
-     //Generar el TOKEN -JWT
-    const token = await generarJWT(usuario.id)
+    //Generar el TOKEN -JWT
+    const token = await generarJWT(usuario.id);
 
     res.json({
       ok: true,
       usuario,
-      token
+      token,
     });
 
   } catch (error) {
     console.log(error);
     res.status(500).json({
       ok: false,
-      msg: "Error inesperado",
+      msg: "Error inesperado...! Revisar logs",
     });
   }
 };
 
-
-
 /* ACTUALIZAR USUARIO======================================== */
 const actualizarUsuario = async (req, res) => {
   //TODO: Validar TOKEN y comprobar si el usuario es correcto
-  const uid = req.params.uid;
+  const uid = req.params.id;
 
   try {
     const usuarioDB = await Usuario.findById(uid);
@@ -91,13 +100,12 @@ const actualizarUsuario = async (req, res) => {
     }
 
     campos.email = email;
-    const usuarioActualizado = await Usuario.findByIdAndUpdate(uid, campos, {new: true,});
+    const usuarioActualizado = await Usuario.findByIdAndUpdate(uid, campos, {new: true});
 
     res.json({
       ok: true,
       usuario: usuarioActualizado,
     });
-
   } catch (error) {
     console.log(error);
     res.status(500).json({
@@ -106,8 +114,6 @@ const actualizarUsuario = async (req, res) => {
     });
   }
 };
-
-
 
 /* ELIMINAR USUARIO ========================================*/
 const borrarUsuario = async (req, res) => {
@@ -129,7 +135,6 @@ const borrarUsuario = async (req, res) => {
       ok: true,
       msg: `Usuario: ${usuarioDB.nombre}; Eliminado`,
     });
-
   } catch (error) {
     console.log(error);
     res.status(500),
