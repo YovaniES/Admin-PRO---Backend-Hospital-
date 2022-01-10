@@ -1,9 +1,10 @@
 /* 
-Path:'/api/login'
+Path:'/api/login' + /renew
 */
 const { Router } = require("express");
 const { check } = require("express-validator");
-const {login, googleSingIn} = require("../controllers/auth");
+const { validarJWT } = require("../middlewares/validar-jwt");
+const { login, googleSingIn, renovarTOKEN } = require("../controllers/auth");
 const { validarCampos } = require("../middlewares/validar-campos");
 
 const router = Router();
@@ -18,12 +19,18 @@ router.post(
   login
 );
 
-router.post('/google',
+router.post(
+  "/google",
   [
-    check('token', 'El token de Google es Obligatorio').not().isEmpty()
+    check("token", "El token de Google es Obligatorio").not().isEmpty(),
+    validarCampos
   ],
   googleSingIn
-)
+);
 
+router.get("/renovarTOKEN",
+           validarJWT, 
+           renovarTOKEN
+           );
 
 module.exports = router;

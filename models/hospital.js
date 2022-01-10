@@ -12,7 +12,7 @@ const HospitalSchema = Schema(
       required:false
     },
 
-    usuario: {
+    idUsuario: {
       type: Schema.Types.ObjectId,
       ref: "Usuario",
       required:true,
